@@ -111,13 +111,17 @@ class PlacekeyAPI:
             url=self.URL,
             calls=self.REQUEST_LIMIT,
             period=self.REQUEST_WINDOW,
-            max_tries=self.max_retries)
+            max_tries=self.max_retries,
+            backoffFn=backoff.fibo,
+            jitterFn=backoff.full_jitter)
 
         self.make_bulk_request = self._get_request_function(
             url=self.BULK_URL,
             calls=self.BULK_REQUEST_LIMIT,
             period=self.BULK_REQUEST_WINDOW,
-            max_tries=self.max_retries)
+            max_tries=self.max_retries,
+            backoffFn=backoff.constant,
+            jitterFn=backoff.random_jitter)
 
     def lookup_placekey(self,
                         fields=None,
@@ -293,7 +297,7 @@ class PlacekeyAPI:
             self.logger.error(f"Error parsing: {e}, returning empty list")
             return []
 
-    def _get_request_function(self, url, calls, period, max_tries):
+    def _get_request_function(self, url, calls, period, max_tries, backoffFn, jitterFn):
         """
         Construct a rate limited function for making requests.
 
@@ -303,8 +307,8 @@ class PlacekeyAPI:
         :param max_tries: the maximum number of retries before giving up
         """
 
-        @backoff.on_exception(backoff.fibo, (RateLimitException, requests.exceptions.RequestException),
-                              max_tries=max_tries)
+        @backoff.on_exception(backoffFn, (RateLimitException, requests.exceptions.RequestException),
+                              max_tries=max_tries, jitter= jitterFn)
         @limits(calls=calls, period=period)
         def make_request(data):
             try:
