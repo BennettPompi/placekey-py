@@ -2,6 +2,7 @@ import itertools
 import json
 import logging
 from json import JSONDecodeError
+import random
 
 import backoff
 import requests
@@ -121,7 +122,7 @@ class PlacekeyAPI:
             period=self.BULK_REQUEST_WINDOW,
             max_tries=self.max_retries,
             backoffFn=backoff.constant,
-            jitterFn=backoff.random_jitter)
+            jitterFn=self.customJitter)
 
     def lookup_placekey(self,
                         fields=None,
@@ -329,3 +330,5 @@ class PlacekeyAPI:
                 raise e
 
         return make_request
+    def customJitter(value):
+        return value + (random.random / 10)
